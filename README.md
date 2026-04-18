@@ -1,6 +1,7 @@
-# Disposable Email Generator & Sender (Turborepo)
+# Scrap-Email — Disposable Email Generator & Sender (Turborepo)
 
-Production-oriented Turborepo monorepo: Express API, Prisma + Neon PostgreSQL, and Brevo for transactional email. **No authentication** (by design).
+Job outreach helper: draft with AI, attach a resume, send via Brevo — with preview and throttling.  
+Production-oriented stack: Express API, Prisma + Neon PostgreSQL, and Brevo for transactional email. **No authentication** (by design).
 
 ## Structure
 
