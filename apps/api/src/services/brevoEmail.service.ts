@@ -11,6 +11,7 @@ export type SendTransactionalEmailInput = {
   apiKey: string;
   senderEmail: string;
   to: string;
+  bcc?: string[];
   subject: string;
   html: string;
   attachments?: SendAttachmentInput[];
@@ -32,6 +33,10 @@ export async function sendTransactionalEmail(
   body.htmlContent = input.html;
   body.sender = { email: input.senderEmail };
   body.to = [{ email: input.to }];
+  if (input.bcc?.length) {
+    const emailBody = body as typeof body & { bcc?: Array<{ email: string }> };
+    emailBody.bcc = input.bcc.map((email) => ({ email }));
+  }
 
   if (input.attachments?.length) {
     body.attachment = input.attachments.map((a) => {

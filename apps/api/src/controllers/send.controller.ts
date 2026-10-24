@@ -6,15 +6,46 @@ import { HttpError } from "../utils/httpError.js";
 
 const MAX_ATTACHMENTS = 3;
 const MAX_DECODED_BYTES_PER_FILE = 7 * 1024 * 1024;
+const MAX_BCC_RECIPIENTS = 25;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type SendBody = {
   to?: unknown;
+  bcc?: unknown;
   subject?: unknown;
   html?: unknown;
   attachments?: unknown;
 };
 
 type NormalizedAttachment = { name: string; contentBase64: string };
+
+function normalizeBccRecipients(raw: unknown, to: string): string[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    throw new HttpError(400, 'Invalid body: "bcc" must be an array when provided');
+  }
+  if (raw.length > MAX_BCC_RECIPIENTS) {
+    throw new HttpError(400, `At most ${MAX_BCC_RECIPIENTS} BCC recipients allowed`);
+  }
+
+  const seen = new Set([to.toLowerCase()]);
+  const recipients: string[] = [];
+  for (const value of raw) {
+    if (typeof value !== "string" || !EMAIL_PATTERN.test(value.trim())) {
+      throw new HttpError(400, "Each BCC recipient must be a valid email address");
+    }
+    const email = value.trim();
+    const normalized = email.toLowerCase();
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      recipients.push(email);
+    }
+  }
+  if (raw.length > 0 && recipients.length === 0) {
+    throw new HttpError(400, "BCC recipients must include an address different from To");
+  }
+  return recipients;
+}
 
 function normalizeAttachments(raw: unknown): NormalizedAttachment[] {
   if (raw === undefined || raw === null) return [];
@@ -76,6 +107,7 @@ export async function postSendEmail(req: Request, res: Response) {
     );
   }
 
+  const bcc = normalizeBccRecipients(body.bcc, to);
   const attachments = normalizeAttachments(body.attachments);
 
   const { BREVO_API_KEY, SENDER_EMAIL } = getEnv();
@@ -83,6 +115,7 @@ export async function postSendEmail(req: Request, res: Response) {
     apiKey: BREVO_API_KEY,
     senderEmail: SENDER_EMAIL,
     to,
+    bcc: bcc.length ? bcc : undefined,
     subject,
     html,
     attachments: attachments.length ? attachments : undefined,
@@ -92,5 +125,6 @@ export async function postSendEmail(req: Request, res: Response) {
     ok: true,
     message: "Email queued/sent via Brevo",
     attachmentCount: attachments.length,
+    bccCount: bcc.length,
   });
 }
